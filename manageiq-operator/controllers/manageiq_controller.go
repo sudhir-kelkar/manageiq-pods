@@ -173,19 +173,19 @@ func (r *ManageIQReconciler) updateManageIQStatus(cr *miqv1alpha1.ManageIQ) erro
 	// update status condition
 	deployments := []string{"httpd", "memcached", "orchestrator", "postgresql"}
 	for _, deploymentName := range deployments {
-		if object := FindDeployment(cr, r.Client, deploymentName); object != nil {
+		if object := findDeployment(cr, r.Client, deploymentName); object != nil {
 			deploymentStatusConditions := object.Status.Conditions
 			// deployment status can have multiple condition types like ReplicaFailure, Progressing, Available but
 			// in our IMInstall CR we just want to show the latest deployment condition type
-			if typeReplicaFailure := FindDeploymentStatusCondition(deploymentStatusConditions, appsv1.DeploymentReplicaFailure); typeReplicaFailure != nil {
+			if typeReplicaFailure := findDeploymentStatusCondition(deploymentStatusConditions, appsv1.DeploymentReplicaFailure); typeReplicaFailure != nil {
 				// reporting deployment condition check 'ReplicaFailure'
 				conditionMessage := fmt.Sprintf("[%s] %s", typeReplicaFailure.Type, typeReplicaFailure.Message)
 				r.reportStatusCondition(miqInstance, conditionMessage, typeReplicaFailure.Reason, metav1.ConditionStatus(typeReplicaFailure.Status), deploymentName)
-			} else if typeProgressingCondition := FindDeploymentStatusCondition(deploymentStatusConditions, appsv1.DeploymentProgressing); typeProgressingCondition != nil {
+			} else if typeProgressingCondition := findDeploymentStatusCondition(deploymentStatusConditions, appsv1.DeploymentProgressing); typeProgressingCondition != nil {
 				// reporting deployment condition check 'Progressing'
 				conditionMessage := fmt.Sprintf("[%s] %s", typeProgressingCondition.Type, typeProgressingCondition.Message)
 				r.reportStatusCondition(miqInstance, conditionMessage, typeProgressingCondition.Reason, metav1.ConditionStatus(typeProgressingCondition.Status), deploymentName)
-			} else if typeAvailableCondition := FindDeploymentStatusCondition(deploymentStatusConditions, appsv1.DeploymentAvailable); typeAvailableCondition != nil {
+			} else if typeAvailableCondition := findDeploymentStatusCondition(deploymentStatusConditions, appsv1.DeploymentAvailable); typeAvailableCondition != nil {
 				// reporting deployment condition check 'Available'
 				conditionMessage := fmt.Sprintf("[%s] %s", typeAvailableCondition.Type, typeAvailableCondition.Message)
 				r.reportStatusCondition(miqInstance, conditionMessage, typeAvailableCondition.Reason, metav1.ConditionStatus(typeAvailableCondition.Status), deploymentName)
@@ -196,13 +196,13 @@ func (r *ManageIQReconciler) updateManageIQStatus(cr *miqv1alpha1.ManageIQ) erro
 	// update status endpoint info
 	ingresses := []string{"httpd"}
 	for _, ingressName := range ingresses {
-		if object := FindIngress(cr, r.Client, ingressName); object != nil {
+		if object := findIngress(cr, r.Client, ingressName); object != nil {
 			if ownerReferences := object.OwnerReferences; len(ownerReferences) != 0 {
 				if object.Spec.TLS != nil ||
 					object.Spec.Rules != nil {
 					endpointInfo := &miqv1alpha1.Endpoint{}
 					if len(object.Spec.TLS[0].SecretName) != 0 {
-						if objectSecret := FindSecret(cr, r.Client, object.Spec.TLS[0].SecretName); object != nil {
+						if objectSecret := findSecret(cr, r.Client, object.Spec.TLS[0].SecretName); object != nil {
 							endpointInfo.Name = ingressName
 							endpointInfo.Type = "UI"
 							endpointInfo.Scope = "External"
@@ -247,7 +247,7 @@ func (r *ManageIQReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 var logger = log.Log.WithName("controller_manageiq")
 
-func FindDeployment(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *appsv1.Deployment {
+func findDeployment(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *appsv1.Deployment {
 	namespacedName := types.NamespacedName{Namespace: cr.Namespace, Name: name}
 	object := &appsv1.Deployment{}
 	if err := client.Get(context.TODO(), namespacedName, object); err != nil {
@@ -259,7 +259,7 @@ func FindDeployment(cr *miqv1alpha1.ManageIQ, client client.Client, name string)
 	return object
 }
 
-func FindIngress(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *networkingv1.Ingress {
+func findIngress(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *networkingv1.Ingress {
 	namespacedName := types.NamespacedName{Namespace: cr.Namespace, Name: name}
 	object := &networkingv1.Ingress{}
 	if err := client.Get(context.TODO(), namespacedName, object); err != nil {
@@ -271,7 +271,7 @@ func FindIngress(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *n
 	return object
 }
 
-func FindSecret(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *corev1.Secret {
+func findSecret(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *corev1.Secret {
 	namespacedName := types.NamespacedName{Namespace: cr.Namespace, Name: name}
 	object := &corev1.Secret{}
 	if err := client.Get(context.TODO(), namespacedName, object); err != nil {
@@ -283,7 +283,7 @@ func FindSecret(cr *miqv1alpha1.ManageIQ, client client.Client, name string) *co
 	return object
 }
 
-func FindDeploymentStatusCondition(conditions []appsv1.DeploymentCondition, conditionType appsv1.DeploymentConditionType) *appsv1.DeploymentCondition {
+func findDeploymentStatusCondition(conditions []appsv1.DeploymentCondition, conditionType appsv1.DeploymentConditionType) *appsv1.DeploymentCondition {
 	for i := range conditions {
 		if conditions[i].Type == conditionType {
 			return &conditions[i]
